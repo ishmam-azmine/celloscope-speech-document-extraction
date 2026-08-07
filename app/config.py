@@ -9,10 +9,13 @@ class Settings(BaseSettings):
     environment: Literal["development", "test", "production"] = "development"
 
     transcription_provider: Literal["mock", "groq"] = "mock"
-    ocr_provider: str = "mock"
+    ocr_provider: Literal["mock", "gemini"] = "mock"
 
     groq_api_key: str | None = None
     groq_model: str = "whisper-large-v3"
+
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.5-flash"
 
     max_audio_size_mb: int = 25
 

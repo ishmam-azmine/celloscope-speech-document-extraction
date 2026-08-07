@@ -4,12 +4,15 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
-from app.adapters.ocr.mock import MockOCRProvider
+from app.adapters.ocr.factory import get_ocr_provider
 from app.api.schemas import LabReportExtractionResponse
+from app.config import get_settings
 from app.services.document_service import DocumentService
 
 
 router = APIRouter(prefix="/api/v1/documents", tags=["Documents"])
+
+settings = get_settings()
 
 ALLOWED_IMAGE_TYPES = {
     "image/jpeg",
@@ -53,11 +56,18 @@ async def extract_document(
             temp_file.write(contents)
             temp_path = temp_file.name
 
-        provider = MockOCRProvider(
-            response_file="testdata/mock_responses/lab_report_ocr.json"
-        )
-        service = DocumentService(provider=provider)
+        try:
+            provider = get_ocr_provider(settings=settings)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": "provider_configuration_error",
+                    "message": str(exc),
+                },
+            ) from exc
 
+        service = DocumentService(provider=provider)
         result = service.extract(image_path=temp_path)
 
         if not result.results:
@@ -91,6 +101,7 @@ async def extract_document(
             ],
             provider=result.provider,
         )
+
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
