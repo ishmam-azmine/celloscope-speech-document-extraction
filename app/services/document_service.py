@@ -1,10 +1,16 @@
+import re
+
 from app.adapters.ocr.base import OCRProvider
 from app.services.models import (
     LabReportExtraction,
     LabReportMeta,
     LabTestResult,
 )
-from app.services.normalizer import normalize_numeric_value, normalize_unit
+from app.services.normalizer import (
+    normalize_numeric_value,
+    normalize_reference_range,
+    normalize_unit,
+)
 
 
 class DocumentService:
@@ -33,45 +39,59 @@ class DocumentService:
             "reference_no": None,
         }
 
-        for line in lines:
-            lower = line.lower()
+        field_patterns = {
+            "patient_name": r"^(?:patient\s*)?name\s*:\s*(.+)$",
+            "age": r"^age\s*:\s*(.+)$",
+            "sex": r"^(?:sex|gender)\s*:\s*(.+)$",
+            "report_date": r"^(?:report\s*date|date)\s*:\s*(.+)$",
+            "lab_name": r"^(?:lab\s*name|laboratory)\s*:\s*(.+)$",
+            "reference_no": r"^(?:reference\s*(?:no|number)|ref\s*(?:no|number))\s*:\s*(.+)$",
+        }
 
-            if lower.startswith("patient name:"):
-                values["patient_name"] = line.split(":", 1)[1].strip()
-            elif lower.startswith("age:"):
-                values["age"] = line.split(":", 1)[1].strip()
-            elif lower.startswith("sex:"):
-                values["sex"] = line.split(":", 1)[1].strip()
-            elif lower.startswith("report date:"):
-                values["report_date"] = line.split(":", 1)[1].strip()
-            elif lower.startswith("lab name:"):
-                values["lab_name"] = line.split(":", 1)[1].strip()
-            elif lower.startswith("reference no:"):
-                values["reference_no"] = line.split(":", 1)[1].strip()
+        for line in lines:
+            stripped = line.strip()
+
+            for field, pattern in field_patterns.items():
+                match = re.match(pattern, stripped, flags=re.IGNORECASE)
+
+                if match and values[field] is None:
+                    values[field] = match.group(1).strip()
 
         return LabReportMeta(**values)
 
     def _extract_results(self, lines: list[str]) -> list[LabTestResult]:
         results = []
 
-        for line in lines:
-            parts = line.split()
+        result_pattern = re.compile(
+            r"^(?P<test_name>.+?)\s+"
+            r"(?P<value>[<>≤≥]?\s*[\d,.]+(?:\.\d+)?)\s+"
+            r"(?P<unit>[^\s]+)\s+"
+            r"(?P<range>[<>≤≥]?\s*[\d,.]+(?:\.\d+)?"
+            r"(?:\s*(?:-|–|—|to)\s*[\d,.]+(?:\.\d+)?)?)"
+            r"(?:\s+(?P<flag>[A-Za-z]+))?$",
+            flags=re.IGNORECASE,
+        )
 
-            if len(parts) < 4:
+        for line in lines:
+            match = result_pattern.match(line.strip())
+
+            if not match:
                 continue
 
-            value = normalize_numeric_value(parts[1])
+            value = normalize_numeric_value(match.group("value"))
 
             if value is None:
                 continue
 
             results.append(
                 LabTestResult(
-                    test_name=parts[0],
+                    test_name=match.group("test_name").strip(),
                     value=value,
-                    unit=normalize_unit(parts[2]),
-                    reference_range=parts[3],
-                    flag=None,
+                    unit=normalize_unit(match.group("unit")),
+                    reference_range=normalize_reference_range(
+                        match.group("range")
+                    ),
+                    flag=match.group("flag"),
                     raw_line=line,
                 )
             )
