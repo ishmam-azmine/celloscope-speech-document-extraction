@@ -43,16 +43,6 @@ async def transcribe_audio(
 
     contents = await file.read()
 
-    max_size_bytes = settings.max_audio_size_mb * 1024 * 1024
-    if len(contents) > max_size_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail={
-                "code": "audio_too_large",
-                "message": f"Audio file must not exceed {settings.max_audio_size_mb} MB.",
-            },
-        )
-
     if not contents:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -62,11 +52,28 @@ async def transcribe_audio(
             },
         )
 
+    max_size_bytes = settings.max_audio_size_mb * 1024 * 1024
+
+    if len(contents) > max_size_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "code": "audio_too_large",
+                "message": (
+                    f"Audio file must not exceed "
+                    f"{settings.max_audio_size_mb} MB."
+                ),
+            },
+        )
+
     suffix = Path(file.filename or "audio").suffix
     temp_path = None
 
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=suffix,
+        ) as temp_file:
             temp_file.write(contents)
             temp_path = temp_file.name
 
@@ -86,10 +93,19 @@ async def transcribe_audio(
 
         service = TranscriptionService(provider=provider)
 
-        result = service.transcribe(
-            audio_path=temp_path,
-            language=language,
-        )
+        try:
+            result = service.transcribe(
+                audio_path=temp_path,
+                language=language,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "code": "transcription_provider_error",
+                    "message": "The transcription provider failed.",
+                },
+            ) from exc
 
         return TranscriptionResponse(
             transcript=result.transcript,

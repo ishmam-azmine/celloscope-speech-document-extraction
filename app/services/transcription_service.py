@@ -11,7 +11,24 @@ class TranscriptionService:
         audio_path: str,
         language: str,
     ) -> TranscriptionResult:
-        return self.provider.transcribe(
+        result = self.provider.transcribe(
             audio_path=audio_path,
             language=language,
+        )
+
+        transcript = result.transcript.strip()
+
+        if not transcript:
+            return TranscriptionResult(
+                transcript="",
+                detected_language=result.detected_language,
+                duration_seconds=result.duration_seconds,
+                provider=result.provider,
+            )
+
+        return TranscriptionResult(
+            transcript=transcript,
+            detected_language=result.detected_language,
+            duration_seconds=result.duration_seconds,
+            provider=result.provider,
         )
