@@ -1,0 +1,13 @@
+{
+  "lines": [
+    "Patient Name: John Doe",
+    "Age: 35",
+    "Sex: Male",
+    "Report Date: 2026-08-01",
+    "Lab Name: Example Diagnostic Center",
+    "Reference No: LAB-2026-001",
+    "Glucose 95 mg/dL 70-100",
+    "Hemoglobin 13.5 g/dL 12-16",
+    "Platelets 250 10^3/uL 150-450"
+  ]
+}
