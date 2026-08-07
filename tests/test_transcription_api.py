@@ -55,3 +55,14 @@ def test_rejects_invalid_language():
     )
 
     assert response.status_code == 422
+
+
+def test_rejects_empty_audio():
+    response = client.post(
+        "/api/v1/transcribe",
+        files={"file": ("sample.wav", b"", "audio/wav")},
+        data={"language": "en"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "empty_audio"

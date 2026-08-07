@@ -5,8 +5,8 @@ from typing import Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
+from app.adapters.transcription.factory import get_transcription_provider
 from app.api.schemas import TranscriptionResponse
-from app.adapters.transcription.mock import MockTranscriptionProvider
 from app.config import get_settings
 from app.services.transcription_service import TranscriptionService
 
@@ -53,8 +53,16 @@ async def transcribe_audio(
             },
         )
 
-    suffix = Path(file.filename or "audio").suffix
+    if not contents:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "empty_audio",
+                "message": "Uploaded audio file is empty.",
+            },
+        )
 
+    suffix = Path(file.filename or "audio").suffix
     temp_path = None
 
     try:
@@ -62,12 +70,20 @@ async def transcribe_audio(
             temp_file.write(contents)
             temp_path = temp_file.name
 
-        if language == "bn":
-            response_file = "testdata/mock_responses/transcription_bn.json"
-        else:
-            response_file = "testdata/mock_responses/transcription_en.json"
+        try:
+            provider = get_transcription_provider(
+                settings=settings,
+                language=language,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": "provider_configuration_error",
+                    "message": str(exc),
+                },
+            ) from exc
 
-        provider = MockTranscriptionProvider(response_file=response_file)
         service = TranscriptionService(provider=provider)
 
         result = service.transcribe(
@@ -81,6 +97,7 @@ async def transcribe_audio(
             duration_seconds=result.duration_seconds,
             provider=result.provider,
         )
+
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
