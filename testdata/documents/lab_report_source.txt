@@ -1,0 +1,17 @@
+NOVA DIAGNOSTIC LABORATORY
+
+Patient Name: Test Patient
+Age: 35
+Sex: Male
+Report Date: 2026-08-08
+Reference No: LAB-TEST-001
+
+TEST RESULTS
+
+Hemoglobin 13.8 gm/dl 13.0 - 17.0
+Blood Glucose 95 mg/dL 70 - 100
+Creatinine <0.5 mg/dL 0.6 - 1.2
+White Blood Cells 12,500 10^3/µL 4,000 - 11,000 High
+Platelets 1.2 × 10^3 10^3/µL 150 - 450
+
+This is synthetic test data and does not contain real patient information.
