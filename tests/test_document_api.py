@@ -19,12 +19,14 @@ def test_extract_lab_report_returns_200():
     assert body["meta"]["patient_name"] == "John Doe"
     assert body["meta"]["age"] == "35"
     assert body["meta"]["sex"] == "Male"
-    assert body["provider"] == "MockOCRProvider"
 
     assert len(body["results"]) == 3
     assert body["results"][0]["test_name"] == "Glucose"
     assert body["results"][0]["value"] == 95
     assert body["results"][0]["unit"] == "mg/dL"
+
+    assert "provider" not in body
+    assert "unparsed_lines" in body
 
 
 def test_preserves_raw_ocr_line():

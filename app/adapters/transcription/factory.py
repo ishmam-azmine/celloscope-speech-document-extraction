@@ -1,7 +1,7 @@
-from app.adapters.transcription.base import TranscriptionProvider
 from app.adapters.transcription.groq import GroqTranscriptionProvider
 from app.adapters.transcription.mock import MockTranscriptionProvider
 from app.config import Settings
+from app.services.ports import TranscriptionProvider
 
 
 def get_transcription_provider(

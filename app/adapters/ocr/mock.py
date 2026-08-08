@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from app.adapters.ocr.base import OCRProvider
+from app.services.ports import OCRProvider
 
 
 class MockOCRProvider(OCRProvider):

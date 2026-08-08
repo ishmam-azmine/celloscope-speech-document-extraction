@@ -2,12 +2,16 @@ from pathlib import Path
 
 from groq import Groq
 
-from app.adapters.transcription.base import TranscriptionProvider
 from app.services.models import TranscriptionResult
+from app.services.ports import TranscriptionProvider
 
 
 class GroqTranscriptionProvider(TranscriptionProvider):
-    def __init__(self, api_key: str, model: str = "whisper-large-v3"):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "whisper-large-v3",
+    ):
         self.client = Groq(api_key=api_key)
         self.model = model
 
@@ -31,10 +35,10 @@ class GroqTranscriptionProvider(TranscriptionProvider):
 
             response = self.client.audio.transcriptions.create(**kwargs)
 
-        detected_language = getattr(response, "language", None)
-
-        if detected_language not in {"bn", "en"}:
-            detected_language = language if language in {"bn", "en"} else "en"
+        detected_language = self._normalize_language(
+            getattr(response, "language", None),
+            requested_language=language,
+        )
 
         duration = getattr(response, "duration", 0.0) or 0.0
 
@@ -44,3 +48,27 @@ class GroqTranscriptionProvider(TranscriptionProvider):
             duration_seconds=float(duration),
             provider="groq",
         )
+
+    def _normalize_language(
+        self,
+        detected_language: str | None,
+        requested_language: str,
+    ) -> str:
+        if detected_language:
+            normalized = detected_language.strip().lower()
+
+            language_map = {
+                "en": "en",
+                "english": "en",
+                "bn": "bn",
+                "bengali": "bn",
+                "bangla": "bn",
+            }
+
+            if normalized in language_map:
+                return language_map[normalized]
+
+        if requested_language in {"bn", "en"}:
+            return requested_language
+
+        return "en"

@@ -114,7 +114,6 @@ async def extract_document(
                 for item in result.results
             ],
             unparsed_lines=result.unparsed_lines,
-            provider=result.provider,
         )
 
     finally:

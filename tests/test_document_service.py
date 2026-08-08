@@ -1,5 +1,5 @@
-from app.adapters.ocr.base import OCRProvider
 from app.services.document_service import DocumentService
+from app.services.ports import OCRProvider
 
 
 class FakeOCRProvider(OCRProvider):

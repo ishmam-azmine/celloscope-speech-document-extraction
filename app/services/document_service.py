@@ -1,5 +1,6 @@
 import re
 
+from app.services.date_normalizer import normalize_date
 from app.services.models import (
     LabReportExtraction,
     LabReportMeta,
@@ -63,7 +64,12 @@ class DocumentService:
                 )
 
                 if match and values[field] is None:
-                    values[field] = match.group(1).strip()
+                    extracted = match.group(1).strip()
+
+                    if field == "report_date":
+                        values[field] = normalize_date(extracted)
+                    else:
+                        values[field] = extracted
 
         return LabReportMeta(**values)
 

@@ -1,7 +1,7 @@
-from app.adapters.ocr.base import OCRProvider
 from app.adapters.ocr.gemini import GeminiOCRProvider
 from app.adapters.ocr.mock import MockOCRProvider
 from app.config import Settings
+from app.services.ports import OCRProvider
 
 
 def get_ocr_provider(settings: Settings) -> OCRProvider:

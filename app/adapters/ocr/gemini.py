@@ -3,7 +3,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
-from app.adapters.ocr.base import OCRProvider
+from app.services.ports import OCRProvider
 
 
 class GeminiOCRProvider(OCRProvider):
