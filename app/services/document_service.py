@@ -21,11 +21,12 @@ class DocumentService:
         lines = self.provider.extract_text(image_path)
 
         meta = self._extract_meta(lines)
-        results = self._extract_results(lines)
+        results, unparsed_lines = self._extract_results(lines)
 
         return LabReportExtraction(
             meta=meta,
             results=results,
+            unparsed_lines=unparsed_lines,
             provider=self.provider.__class__.__name__,
         )
 
@@ -45,49 +46,98 @@ class DocumentService:
             "sex": r"^(?:sex|gender)\s*:\s*(.+)$",
             "report_date": r"^(?:report\s*date|date)\s*:\s*(.+)$",
             "lab_name": r"^(?:lab\s*name|laboratory)\s*:\s*(.+)$",
-            "reference_no": r"^(?:reference\s*(?:no|number)|ref\s*(?:no|number))\s*:\s*(.+)$",
+            "reference_no": (
+                r"^(?:reference\s*(?:no|number)|"
+                r"ref\s*(?:no|number))\s*:\s*(.+)$"
+            ),
         }
 
         for line in lines:
             stripped = line.strip()
 
             for field, pattern in field_patterns.items():
-                match = re.match(pattern, stripped, flags=re.IGNORECASE)
+                match = re.match(
+                    pattern,
+                    stripped,
+                    flags=re.IGNORECASE,
+                )
 
                 if match and values[field] is None:
                     values[field] = match.group(1).strip()
 
         return LabReportMeta(**values)
 
-    def _extract_results(self, lines: list[str]) -> list[LabTestResult]:
+    def _extract_results(
+        self,
+        lines: list[str],
+    ) -> tuple[list[LabTestResult], list[str]]:
         results = []
+        unparsed_lines = []
+
+        numeric_value = (
+            r"[<>≤≥]?\s*"
+            r"(?:"
+            r"[\d,.]+(?:\.\d+)?"
+            r"(?:\s*[x×]\s*10\s*\^?\s*[+-]?\d+)?"
+            r")"
+        )
 
         result_pattern = re.compile(
-            r"^(?P<test_name>.+?)\s+"
-            r"(?P<value>[<>≤≥]?\s*[\d,.]+(?:\.\d+)?)\s+"
-            r"(?P<unit>[^\s]+)\s+"
-            r"(?P<range>[<>≤≥]?\s*[\d,.]+(?:\.\d+)?"
-            r"(?:\s*(?:-|–|—|to)\s*[\d,.]+(?:\.\d+)?)?)"
-            r"(?:\s+(?P<flag>[A-Za-z]+))?$",
+            rf"^(?P<test_name>.+?)\s+"
+            rf"(?P<value>{numeric_value})\s+"
+            rf"(?P<unit>[^\s]+)\s+"
+            rf"(?P<range>[<>≤≥]?\s*[\d,.]+(?:\.\d+)?"
+            rf"(?:\s*(?:-|–|—|to)\s*[\d,.]+(?:\.\d+)?)?)"
+            rf"(?:\s+(?P<flag>[A-Za-z]+))?$",
             flags=re.IGNORECASE,
         )
 
-        for line in lines:
-            match = result_pattern.match(line.strip())
+        metadata_prefixes = (
+            "patient name:",
+            "name:",
+            "age:",
+            "sex:",
+            "gender:",
+            "report date:",
+            "date:",
+            "lab name:",
+            "laboratory:",
+            "reference no:",
+            "reference number:",
+            "ref no:",
+            "ref number:",
+        )
 
-            if not match:
+        for line in lines:
+            stripped = line.strip()
+
+            if not stripped:
                 continue
 
-            value = normalize_numeric_value(match.group("value"))
+            if stripped.lower().startswith(metadata_prefixes):
+                continue
+
+            match = result_pattern.match(stripped)
+
+            if not match:
+                unparsed_lines.append(line)
+                continue
+
+            value = normalize_numeric_value(
+                match.group("value")
+            )
 
             if value is None:
+                unparsed_lines.append(line)
                 continue
 
             results.append(
                 LabTestResult(
                     test_name=match.group("test_name").strip(),
                     value=value,
-                    unit=normalize_unit(match.group("unit")),
+                    unit=normalize_unit(
+                        match.group("unit")
+                    ),
                     reference_range=normalize_reference_range(
                         match.group("range")
                     ),
@@ -96,4 +146,4 @@ class DocumentService:
                 )
             )
 
-        return results
+        return results, unparsed_lines

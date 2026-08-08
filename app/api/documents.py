@@ -52,7 +52,10 @@ async def extract_document(
     temp_path = None
 
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=suffix,
+        ) as temp_file:
             temp_file.write(contents)
             temp_path = temp_file.name
 
@@ -68,14 +71,25 @@ async def extract_document(
             ) from exc
 
         service = DocumentService(provider=provider)
-        result = service.extract(image_path=temp_path)
+
+        try:
+            result = service.extract(image_path=temp_path)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "code": "ocr_provider_error",
+                    "message": "The OCR provider failed.",
+                },
+            ) from exc
 
         if not result.results:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={
                     "code": "no_lab_results_found",
                     "message": "No valid laboratory results could be extracted.",
+                    "unparsed_lines": result.unparsed_lines,
                 },
             )
 
@@ -99,6 +113,7 @@ async def extract_document(
                 }
                 for item in result.results
             ],
+            unparsed_lines=result.unparsed_lines,
             provider=result.provider,
         )
 

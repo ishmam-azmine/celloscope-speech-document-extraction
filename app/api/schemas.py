@@ -31,4 +31,5 @@ class LabTestResultResponse(BaseModel):
 class LabReportExtractionResponse(BaseModel):
     meta: LabReportMetaResponse
     results: list[LabTestResultResponse]
+    unparsed_lines: list[str]
     provider: str

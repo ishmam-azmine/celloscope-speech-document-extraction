@@ -34,4 +34,5 @@ class LabTestResult:
 class LabReportExtraction:
     meta: LabReportMeta
     results: list[LabTestResult]
+    unparsed_lines: list[str]
     provider: str

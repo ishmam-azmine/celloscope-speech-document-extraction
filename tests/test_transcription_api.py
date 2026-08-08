@@ -66,3 +66,20 @@ def test_rejects_empty_audio():
 
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "empty_audio"
+
+
+def test_rejects_audio_larger_than_25_mb():
+    oversized_audio = b"0" * ((25 * 1024 * 1024) + 1)
+
+    response = client.post(
+        "/api/v1/transcribe",
+        files={"file": ("large.wav", oversized_audio, "audio/wav")},
+        data={"language": "en"},
+    )
+
+    assert response.status_code == 413
+
+    body = response.json()
+
+    assert body["detail"]["code"] == "audio_too_large"
+    assert "25 MB" in body["detail"]["message"]
