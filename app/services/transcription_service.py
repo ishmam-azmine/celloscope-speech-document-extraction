@@ -1,5 +1,5 @@
-from app.adapters.transcription.base import TranscriptionProvider
 from app.services.models import TranscriptionResult
+from app.services.ports import TranscriptionProvider
 
 
 class TranscriptionService:

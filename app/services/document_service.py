@@ -1,6 +1,5 @@
 import re
 
-from app.adapters.ocr.base import OCRProvider
 from app.services.models import (
     LabReportExtraction,
     LabReportMeta,
@@ -11,6 +10,7 @@ from app.services.normalizer import (
     normalize_reference_range,
     normalize_unit,
 )
+from app.services.ports import OCRProvider
 
 
 class DocumentService:
